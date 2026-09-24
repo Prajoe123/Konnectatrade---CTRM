@@ -1,0 +1,7 @@
+streamlit
+pandas
+fpdf2
+google-genai
+streamlit-gsheets
+feedparser
+st-theme
