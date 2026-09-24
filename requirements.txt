@@ -4,4 +4,4 @@ fpdf2
 google-genai
 st-theme
 feedparser
-streamlit-gsheets
+st-gsheets-connection
