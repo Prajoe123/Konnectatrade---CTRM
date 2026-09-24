@@ -3,9 +3,5 @@ pandas
 fpdf2
 google-genai
 st-theme
-streamlit
-pandas
-fpdf2
-google-genai
-st-theme
 feedparser
+streamlit-gsheets
