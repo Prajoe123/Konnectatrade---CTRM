@@ -11,7 +11,22 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import plotly.express as px
 import plotly.graph_objects as go
-
+# Temporary Gemini API Key Test
+with st.expander("🔑 Test Gemini API Key Connection", expanded=True):
+    if "GEMINI_API_KEY" in st.secrets and st.secrets["GEMINI_API_KEY"]:
+        st.success("`GEMINI_API_KEY` successfully loaded from `secrets.toml`!")
+        if st.button("Test Gemini API Call"):
+            try:
+                client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents="Respond with 'Gemini API is connected and working!'",
+                )
+                st.write("🤖 **API Response:**", response.text)
+            except Exception as e:
+                st.error(f"Connection failed: {e}")
+    else:
+        st.error("`GEMINI_API_KEY` not found in `.streamlit/secrets.toml`.")
 # ---------------------------------------------------------
 # PAGE CONFIGURATION
 # ---------------------------------------------------------
