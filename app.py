@@ -895,8 +895,8 @@ elif module == "4. Message Assistant & 1-Click Action Triggers":
 
                     with st.spinner("Gemini AI is drafting response..."):
                         response = client.models.generate_content(
-                            model="gemini-2.5-flash",
-                            contents=prompt,
+                            model="gemini-3.5-flash",
+                            contents="Your prompt or market analysis query here"
                         )
                         st.session_state["ai_reply_text"] = response.text
                         st.success("Reply generated successfully!")
