@@ -14,6 +14,7 @@ import plotly.graph_objects as go
 # Temporary Gemini API Key Test
 with st.expander("🔑 Test Gemini API Key Connection", expanded=True):
     if "GEMINI_API_KEY" in st.secrets and st.secrets["GEMINI_API_KEY"]:
+        ...
         st.success("`GEMINI_API_KEY` successfully loaded from `secrets.toml`!")
         if st.button("Test Gemini API Call"):
             try:
