@@ -3,6 +3,13 @@ from google import genai
 import pandas as pd
 import datetime
 
+# Try importing OpenAI for multi-vendor backup
+try:
+    from openai import OpenAI
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+
 st.set_page_config(
     page_title="Konnectatrade - CTRM Operations Center",
     layout="wide",
@@ -12,13 +19,61 @@ st.set_page_config(
 st.title("🌾 Konnectatrade - CTRM Operations Center")
 st.write("Commodity Trading & Risk Management | Global Softs, Grains, Rice & Proteins")
 
+# Helper class to standardize AI responses across providers
+class AIResponse:
+    def __init__(self, text):
+        self.text = text
+
+# Multi-Vendor Robust Fallback Engine (Gemini -> OpenAI Backup)
+def call_ai_with_failover(prompt):
+    # 1. Try Google Gemini Models First
+    if "GEMINI_API_KEY" in st.secrets and st.secrets["GEMINI_API_KEY"]:
+        try:
+            client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+            gemini_models = ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-2.5-flash"]
+            for model_name in gemini_models:
+                try:
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=prompt
+                    )
+                    if response and response.text:
+                        return response
+                except Exception:
+                    continue
+        except Exception:
+                    pass
+
+    # 2. If Gemini fails or is busy (503), failover to OpenAI if configured
+    if OPENAI_AVAILABLE and "OPENAI_API_KEY" in st.secrets and st.secrets["OPENAI_API_KEY"]:
+        try:
+            openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+            completion = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}]
+            )
+            reply_text = completion.choices[0].message.content
+            return AIResponse(reply_text)
+        except Exception as e:
+            raise Exception(f"All AI providers busy. Gemini 503 and OpenAI error: {e}")
+
+    raise Exception("No valid API keys configured in st.secrets (Gemini or OpenAI).")
+
 # Sidebar System Status & Quick Catalog Reference
 with st.sidebar:
     st.header("⚙️ System Status")
-    if "GEMINI_API_KEY" in st.secrets and st.secrets["GEMINI_API_KEY"]:
-        st.success("API Key: Loaded (Secure)")
+    gemini_ok = "GEMINI_API_KEY" in st.secrets and st.secrets["GEMINI_API_KEY"]
+    openai_ok = OPENAI_AVAILABLE and "OPENAI_API_KEY" in st.secrets and st.secrets["OPENAI_API_KEY"]
+    
+    if gemini_ok:
+        st.success("Gemini API: Ready (Primary)")
     else:
-        st.error("API Key: Missing in Secrets")
+        st.warning("Gemini API: Not Configured")
+
+    if openai_ok:
+        st.success("OpenAI API: Ready (Backup)")
+    else:
+        st.info("OpenAI API: Optional Backup")
         
     st.markdown("---")
     st.markdown("### 📋 Active Portfolio Categories")
@@ -118,10 +173,8 @@ with tab1:
     )
 
     if st.button("Generate AI Market Intelligence", key="btn_market"):
-        with st.spinner("Compiling market intelligence..."):
+        with st.spinner("Compiling market intelligence via multi-vendor failover..."):
             try:
-                client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
-
                 prompt = f"""
                 You are an expert senior commodity trading analyst and risk manager specializing in international agricultural trade.
                 
@@ -137,16 +190,7 @@ with tab1:
                 4. Trade Structuring & Incoterm Advice (FOB/CIF, Payment terms like L/C at sight)
                 """
 
-                try:
-                    response = client.models.generate_content(
-                        model="gemini-3.8-flash",
-                        contents=prompt
-                    )
-                except Exception:
-                    response = client.models.generate_content(
-                        model="gemini-2.5-flash",
-                        contents=prompt
-                    )
+                response = call_ai_with_failover(prompt)
 
                 st.success("Analysis generated successfully!")
                 st.markdown("---")
@@ -175,7 +219,6 @@ with tab2:
     if st.button("Generate Outreach Message", key="btn_outreach"):
         with st.spinner("Drafting high-conversion trade message..."):
             try:
-                client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
                 msg_prompt = f"""
                 Draft a professional B2B commodity trading outreach message for Konnectatrade (konnectatrade.com).
                 - Target Persona: {buyer_persona}
@@ -185,10 +228,7 @@ with tab2:
                 - Business: Connecting verified global suppliers with buyers under secure terms (LC at sight, FOB/CIF).
                 Keep it engaging, concise, and structured with a clear call to action.
                 """
-                response = client.models.generate_content(
-                    model="gemini-3.8-flash",
-                    contents=msg_prompt
-                )
+                response = call_ai_with_failover(msg_prompt)
                 st.success("Outreach message generated!")
                 st.markdown("---")
                 st.markdown(response.text)
@@ -299,14 +339,11 @@ with tab5:
 
 # --- TAB 6: API DIAGNOSTIC ---
 with tab6:
-    st.header("Gemini API Diagnostic Center")
-    if st.button("Run Full API Connection Test", key="btn_diag"):
+    st.header("Multi-Vendor API Diagnostic Center")
+    if st.button("Run Full Multi-Vendor Connection Test", key="btn_diag"):
         try:
-            client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
-            response = client.models.generate_content(
-                model="gemini-3.8-flash",
-                contents="Say 'Gemini API is connected and working!'"
-            )
-            st.success(f"🤖 API Response: {response.text}")
+            prompt_diag = "Say 'Konnectatrade multi-vendor failover AI engine is connected and working!'"
+            response = call_ai_with_failover(prompt_diag)
+            st.success(f"🤖 AI Response: {response.text}")
         except Exception as e:
-            st.error(f"Connection failed: {e}")
+            st.error(f"Connection failed across all providers: {e}")
